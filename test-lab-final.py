@@ -1,70 +1,59 @@
 import unittest
+from abc import ABC
 
-# สมมติว่ามีการ import classes ต่างๆ ที่คุณเขียนไว้
-# from smart_home import SmartLight, SmartAC, Scene, SmartHomeApp
+# สมมติว่ามีการ import classes และ enums ต่างๆ จากไฟล์ที่คุณเขียน
+# from smart_home import ConnectionType, ACMode, SmartDevice, SmartLight, SmartAC, Scene
 
-class TestSmartHomePolymorphism(unittest.TestCase):
+class TestSmartHomePythonicOOP(unittest.TestCase):
 
     def setUp(self):
-        # สร้าง App
-        self.app = SmartHomeApp()
-        
-        # สร้างอุปกรณ์ (Light และ AC) ที่มีการเชื่อมต่อต่างกัน
-        self.light1 = SmartLight(name="Living Room Main", brand="Philips", room="Living Room", conn_type="Wi-Fi")
-        self.light2 = SmartLight(name="Bedroom Lamp", brand="Xiaomi", room="Bedroom", conn_type="Bluetooth")
-        self.ac1 = SmartAC(mode="Cool", name="Master AC", brand="Daikin", room="Bedroom", conn_type="Zigbee")
-        
-        # เพิ่มเข้า App
-        self.app.register_device(self.light1)
-        self.app.register_device(self.light2)
-        self.app.register_device(self.ac1)
+        self.light = SmartLight(name="Ceiling Light", brand="Philips", room="Living Room", connection_type=ConnectionType.WIFI)
+        self.ac = SmartAC(name="Master AC", brand="Daikin", room="Bedroom", connection_type=ConnectionType.ZIGBEE, mode=ACMode.COOL)
 
-    def test_polymorphism_turn_on(self):
-        # ทดสอบว่าแต่ละอุปกรณ์เรียก Method เดียวกัน (turn_on) 
-        # แต่ผลลัพธ์การทำงาน (Protocol) ต่างกันตาม conn_type
-        # หมายเหตุ: ในโค้ดจริงอาจจะเป็นการเช็คค่า String ที่ return ออกมา หรือ Mock print
-        self.assertEqual(self.light1.turn_on(), "Sending Wi-Fi signal to turn on Living Room Main")
-        self.assertEqual(self.light2.turn_on(), "Sending Bluetooth pairing signal to turn on Bedroom Lamp")
-        self.assertEqual(self.ac1.turn_on(), "Sending Zigbee mesh signal to turn on Master AC in Cool mode")
+    def test_abstract_class(self):
+        with self.assertRaises(TypeError):
+            device = SmartDevice(name="Test", brand="Test", room="Test", connection_type=ConnectionType.WIFI)
+        self.assertTrue(issubclass(SmartDevice, ABC))
 
-    def test_mixed_devices_in_scene(self):
-        # ทดสอบการสร้าง Scene ที่มีอุปกรณ์ผสมกัน
-        sleep_scene = Scene(name="Good Night")
-        sleep_scene.add_device(self.light2) # เพิ่มไฟ
-        sleep_scene.add_device(self.ac1)    # เพิ่มแอร์
-        
-        # อุปกรณ์ 1 ชิ้นอยู่ได้หลาย Scene
-        movie_scene = Scene(name="Movie Time")
-        movie_scene.add_device(self.light1)
-        movie_scene.add_device(self.ac1)    # แอร์ตัวเดิมอยู่ในอีก Scene ได้
-        
-        self.app.add_scene(sleep_scene)
-        self.app.add_scene(movie_scene)
-        
-        # ตรวจสอบจำนวนอุปกรณ์ใน Scene
-        self.assertEqual(len(sleep_scene.get_devices()), 2)
-        
-    def test_execute_scene(self):
-        # ทดสอบการสั่งทำงานระดับ Scene
-        sleep_scene = Scene(name="Good Night")
-        sleep_scene.add_device(self.light2)
-        sleep_scene.add_device(self.ac1)
-        
-        # เมื่อสั่ง execute scene ควรเรียกคำสั่ง turn_on ของทุกอุปกรณ์ในลิสต์
-        results = sleep_scene.execute()
-        self.assertIn("Sending Bluetooth pairing signal to turn on Bedroom Lamp", results)
-        self.assertIn("Sending Zigbee mesh signal to turn on Master AC in Cool mode", results)
+    def test_encapsulation_with_property(self):
+        # ทดสอบการเรียก Get ผ่าน @property (เรียกเหมือนตัวแปร ไม่ต้องมีวงเล็บ)
+        self.assertFalse(self.light.is_on)
+        self.assertEqual(self.ac.temperature, 25)
 
-    def test_search_device_by_name_or_brand(self):
-        # ทดสอบการค้นหา
-        search_results = self.app.search("Xiaomi")
-        self.assertEqual(len(search_results), 1)
-        self.assertEqual(search_results[0].name, "Bedroom Lamp")
+        # ทดสอบการเรียก Set ผ่าน @property.setter (ตั้งค่าอุณหภูมิที่ถูกต้อง)
+        self.ac.temperature = 24
+        self.assertEqual(self.ac.temperature, 24)
 
-    def test_view_by_room(self):
-        # ทดสอบการดึงข้อมูลตาม Room (เทียบเท่าการดึงเพลงตาม Album)
-        bedroom_devices = self.app.get_devices_by_room("Bedroom")
-        self.assertEqual(len(bedroom_devices), 2) # ควรเจอ light2 และ ac1
+        # ค่าต่ำหรือสูงเกินไป ต้องเกิด ValueError ตามที่ดักไว้ใน setter
+        with self.assertRaises(ValueError):
+            self.ac.temperature = 10
+            
+        with self.assertRaises(ValueError):
+            self.ac.temperature = 35
+
+        # ตรวจสอบว่าค่าอุณหภูมิยังคงเป็น 24 (ไม่ถูกเปลี่ยนจากคำสั่งที่ผิดพลาด)
+        self.assertEqual(self.ac.temperature, 24)
+
+        # ตรวจสอบการพยายามเข้าถึง private variable ตรงๆ (ต้องเกิด AttributeError)
+        with self.assertRaises(AttributeError):
+            temp = self.ac.__temperature
+
+    def test_polymorphism(self):
+        light_result = self.light.turn_on()
+        ac_result = self.ac.turn_on()
+
+        self.assertIn("Turning on Ceiling Light via WIFI", light_result)
+        self.assertIn("Turning on Master AC via ZIGBEE in COOL mode at 25°C", ac_result)
+
+    def test_scene_execution(self):
+        evening_scene = Scene(name="Evening Relax")
+        evening_scene.add_device(self.light)
+        evening_scene.add_device(self.ac)
+
+        results = evening_scene.execute()
+        self.assertEqual(len(results), 2)
+        self.assertIn("WIFI", results[0])
+        self.assertIn("COOL mode", results[1])
 
 if __name__ == '__main__':
     unittest.main()
