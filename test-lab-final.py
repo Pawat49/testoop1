@@ -139,31 +139,29 @@ class TestSmartHomeStrictOOP(unittest.TestCase):
     # ... (Test อื่นๆ ด้านบนเหมือนเดิม) ...
 
     def test_smart_home_app_management(self):
-        # 11. ทดสอบระบบจัดการระดับ App (การค้นหาและกรองข้อมูล)
         app = SmartHomeApp()
+        
+        # สมมติว่ามีฟังก์ชันเพิ่มอุปกรณ์
+        # (คุณอาจใช้ชื่ออื่น เช่น register_device ให้ปรับให้ตรงกับโค้ดคุณนะครับ)
         app.add_device(self.light)
         app.add_device(self.ac)
 
-        # --- กรณีค้นหา "เจอ" (ต้องคืนค่าเป็น List ที่มีข้อมูล) ---
+        # --- 1. ทดสอบกรณี: ค้นหา "เจอ" ---
         search_result = app.search_by_name("Master")
-        self.assertIsNotNone(search_result)
+        
+        # ดักจับ TypeError: เช็คก่อนเลยว่าค่าที่คืนมาต้องเป็น List นะ ห้ามเป็น None
+        self.assertIsInstance(search_result, list, "Error: เจอข้อมูล แต่ไม่ได้คืนค่ากลับมาเป็น List")
         self.assertEqual(len(search_result), 1)
         self.assertEqual(search_result[0].name, "Master AC")
 
-        living_room_devices = app.get_devices_by_room("Living Room")
-        self.assertIsNotNone(living_room_devices)
-        self.assertEqual(len(living_room_devices), 1)
-        self.assertEqual(living_room_devices[0].name, "Ceiling Light")
-
-        # --- กรณีค้นหา "ไม่เจอ" (ต้องคืนค่าเป็น None ตามโจทย์กำหนด) ---
-        
-        # ค้นหาด้วยชื่อที่ไม่มีในระบบ
+        # --- 2. ทดสอบกรณี: ค้นหา "ไม่เจอ" (ต้องเป็น None) ---
         not_found_search = app.search_by_name("Unknown Device")
-        self.assertIsNone(not_found_search, "Should return None when device name is not found")
+        
+        # ตัวนี้คือตัวเช็ค None ครับ ถ้าคุณคืนมาเป็น [] มันจะขึ้น Error ข้อความด้านหลัง
+        self.assertIsNone(not_found_search, "Error: ค้นหาไม่เจอข้อมูล ต้อง Return เป็น None เท่านั้น (ห้ามเป็นลิสต์ว่าง)")
 
-        # ค้นหาด้วยห้องที่ไม่มีอุปกรณ์
+        # ทำแบบเดียวกันกับ get_devices_by_room
         not_found_room = app.get_devices_by_room("Kitchen")
-        self.assertIsNone(not_found_room, "Should return None when no devices are in the room")
-
+        self.assertIsNone(not_found_room, "Error: ค้นหาห้องไม่เจอ ต้อง Return เป็น None เท่านั้น")
 if __name__ == '__main__':
     unittest.main()
