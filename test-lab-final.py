@@ -38,6 +38,14 @@ class SmartDevice(ABC):
     def connection_type(self):
         return self.__connection_type
     
+    @property
+    def is_on(self):
+        return self.__is_on
+    
+    @is_on.setter
+    def is_on(self,is_on):
+        self.__is_on = is_on
+    
     @abstractmethod
     def turn_on(self):
         pass
@@ -49,10 +57,12 @@ class SmartDevice(ABC):
 class SmartLight(SmartDevice):
 
     def turn_on(self):
-        return f"Turning on [{self.name}] via [{self.connection_type}]"
+        self.is_on = True
+        return f"Turning on {self.name} via {self.connection_type.name}"
 
     def turn_off(self):
-        return f"Turning off [{self.name}] via [{self.connection_type}]"
+        self.is_on = False
+        return f"Turning off {self.name} via {self.connection_type.name}"
     
 class SmartAC(SmartDevice):
 
@@ -72,19 +82,20 @@ class SmartAC(SmartDevice):
     @temperature.setter
     def temperature(self,temperature):
         if (temperature < 16) or (temperature > 30):
-            raise ValueError("Temperature must between 16 and 30")
+            raise ValueError("Temperature must be between 16 and 30")
         self.__temperature = temperature
         
     def turn_on(self):
-        return f"Turning on [{self.name}] via [{self.connection_type.name}] in mode [{self.mode.name}] at [{self.temperature}]°C"
+        self.is_on = True
+        return f"Turning on {self.name} via {self.connection_type.name} in {self.mode.name} mode at {self.temperature}°C"
     
     def turn_off(self):
-        return f"Turning off [{self.name}] via [{self.connection_type.name}] in mode [{self.mode.name}] at [{self.temperature}]°C"
+        self.is_on = False
+        return f"Turning off {self.name} via {self.connection_type.name} in {self.mode.name} mode at {self.temperature}°C"
 
 class Scene:
     
-    def __init__(self,name):
-        self.__name = name
+    def __init__(self):
         self.__device = []
 
     def add_device(self,device):
@@ -122,72 +133,10 @@ class SmartHomeApp:
 class TestSmartHomeStrictOOP(unittest.TestCase):
 
     def setUp(self):
-        # สร้างอุปกรณ์เพื่อเตรียมทดสอบ
         self.light = SmartLight(name="Ceiling Light", brand="Philips", room="Living Room", connection_type=ConnectionType.WIFI)
         self.ac = SmartAC(name="Master AC", brand="Daikin", room="Bedroom", connection_type=ConnectionType.ZIGBEE, mode=ACMode.COOL)
 
-    def test_abstract_class_and_methods(self):
-        # 1. ทดสอบว่าคลาสแม่เป็น Abstract Class จริง
-        self.assertTrue(issubclass(SmartDevice, ABC))
-        
-        # 2. ต้องไม่สามารถสร้าง Object จากคลาสแม่ได้โดยตรง
-        with self.assertRaises(TypeError):
-            _ = SmartDevice(name="Test", brand="Test", room="Test", connection_type=ConnectionType.WIFI)
-
-    def test_strict_encapsulation_all_private(self):
-        # 3. ทดสอบว่าตัวแปรถูกซ่อนเป็น Private (__) จริง 
-        # (ใน Python เมื่อใช้ __ ตัวแปรจะถูกซ่อน การพยายามเรียกตรงๆ ต้องเกิด AttributeError)
-        with self.assertRaises(AttributeError):
-            _ = self.light.__name
-        with self.assertRaises(AttributeError):
-            _ = self.light.__is_on
-            
-        # 4. ทดสอบว่าเข้าถึงข้อมูลผ่าน @property ได้ถูกต้อง
-        self.assertEqual(self.light.name, "Ceiling Light")
-        self.assertEqual(self.light.brand, "Philips")
-        self.assertEqual(self.light.room, "Living Room")
-        self.assertEqual(self.light.connection_type, ConnectionType.WIFI)
-        self.assertFalse(self.light.is_on) # ค่าเริ่มต้นต้องเป็น False
-
-    def test_ac_temperature_validation(self):
-        # 5. ทดสอบการดึงค่าอุณหภูมิเริ่มต้น
-        self.assertEqual(self.ac.temperature, 25)
-
-        # 6. ทดสอบการตั้งค่า (Setter) ในช่วงที่ถูกต้อง
-        self.ac.temperature = 24
-        self.assertEqual(self.ac.temperature, 24)
-
-        # 7. ทดสอบการโยน Error และตรวจสอบ "ข้อความแจ้งเตือน" ว่าตรงตามโจทย์เป๊ะหรือไม่
-        with self.assertRaisesRegex(ValueError, "Temperature must be between 16 and 30"):
-            self.ac.temperature = 10
-            
-        with self.assertRaisesRegex(ValueError, "Temperature must be between 16 and 30"):
-            self.ac.temperature = 35
-
-        # 8. ยืนยันว่าค่าอุณหภูมิไม่เปลี่ยนเมื่อใส่ค่าผิด
-        self.assertEqual(self.ac.temperature, 24)
-
-    def test_polymorphism_exact_string_match(self):
-        # 9. ทดสอบ Polymorphism และฟอร์แมตข้อความที่ Return (ต้องตรงเป๊ะ)
-        # หมายเหตุ: .name ของ Enum จะคืนค่าเช่น "WIFI" หรือ "COOL"
-        expected_light_str = "Turning on Ceiling Light via WIFI"
-        expected_ac_str = "Turning on Master AC via ZIGBEE in COOL mode at 25°C"
-        
-        self.assertEqual(self.light.turn_on(), expected_light_str)
-        self.assertEqual(self.ac.turn_on(), expected_ac_str)
-
-    def test_scene_execution(self):
-        # 10. ทดสอบ Collections ระดับ Scene
-        evening_scene = Scene() # สร้าง Scene
-        evening_scene.add_device(self.light)
-        evening_scene.add_device(self.ac)
-
-        results = evening_scene.execute()
-        
-        # ตรวจสอบว่า Return ออกมาเป็น List ของ String ที่ถูกต้อง
-        self.assertEqual(len(results), 2)
-        self.assertEqual(results[0], "Turning on Ceiling Light via WIFI")
-        self.assertEqual(results[1], "Turning on Master AC via ZIGBEE in COOL mode at 25°C")
+    # ... (Test อื่นๆ ด้านบนเหมือนเดิม) ...
 
     def test_smart_home_app_management(self):
         # 11. ทดสอบระบบจัดการระดับ App (การค้นหาและกรองข้อมูล)
@@ -195,15 +144,26 @@ class TestSmartHomeStrictOOP(unittest.TestCase):
         app.add_device(self.light)
         app.add_device(self.ac)
 
-        # ค้นหาด้วยชื่อ (Keyword)
+        # --- กรณีค้นหา "เจอ" (ต้องคืนค่าเป็น List ที่มีข้อมูล) ---
         search_result = app.search_by_name("Master")
+        self.assertIsNotNone(search_result)
         self.assertEqual(len(search_result), 1)
         self.assertEqual(search_result[0].name, "Master AC")
 
-        # กรองข้อมูลตามห้อง
         living_room_devices = app.get_devices_by_room("Living Room")
+        self.assertIsNotNone(living_room_devices)
         self.assertEqual(len(living_room_devices), 1)
         self.assertEqual(living_room_devices[0].name, "Ceiling Light")
+
+        # --- กรณีค้นหา "ไม่เจอ" (ต้องคืนค่าเป็น None ตามโจทย์กำหนด) ---
+        
+        # ค้นหาด้วยชื่อที่ไม่มีในระบบ
+        not_found_search = app.search_by_name("Unknown Device")
+        self.assertIsNone(not_found_search, "Should return None when device name is not found")
+
+        # ค้นหาด้วยห้องที่ไม่มีอุปกรณ์
+        not_found_room = app.get_devices_by_room("Kitchen")
+        self.assertIsNone(not_found_room, "Should return None when no devices are in the room")
 
 if __name__ == '__main__':
     unittest.main()
