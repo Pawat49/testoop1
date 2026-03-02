@@ -113,16 +113,26 @@ class SmartHomeApp:
         self.__device = []
 
     def search_by_name(self,name):
+        result = []
         for device in self.__device:
-            if device.name == name:
-                return device
-        return None
+            if name in device.name:
+                result.append(device)
+
+        if len(result) == 0:
+            return None
+        
+        return result
     
-    def get_device_by_room(self,room):
+    def get_devices_by_room(self,room):
+        result = []
         for device in self.__device:
             if device.room == room:
-                return device
-        return None
+                result.append(device)
+        
+        if len(result) == 0:
+            return None
+        
+        return result
 
     def add_device(self,device):
         self.__device.append(device)
